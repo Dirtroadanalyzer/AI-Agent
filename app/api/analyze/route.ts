@@ -3,6 +3,7 @@ import type { PropertyReport } from "../../lib/report";
 import { getSupabaseAdmin } from "../../lib/supabase-admin";
 import { resolveMohaveParcel } from "../../lib/parcel-resolver";
 import { resolveSpatialOverlays } from "../../lib/spatial-overlays";
+import { resolveAdwrWells } from "../../lib/adwr-wells";
 
 export const maxDuration = 300;
 const sectionIds = ["parcel", "title", "zoning", "access", "flood", "water", "septic", "utilities", "fire", "environment", "market", "negotiation"];
@@ -48,9 +49,9 @@ export async function POST(request: Request) {
     };
     if(action==="investigate"){
       const kind=String(body.kind);const assignment=assignments[kind];if(!assignment)return Response.json({ok:false,error:"Unknown investigator."},{status:400});
-      const county=kind==="parcel"?await resolveMohaveParcel(apn):null;const spatial=county?await resolveSpatialOverlays(county):null;
-      const context=`APN ${apn}; tracks ${propertyTypes.join(", ")}; objective ${objective}; fire input ${fireService}; user information ${knownInformation||"None"}; targeted follow-up information ${supplementalInformation||"None"}; OFFICIAL MOHAVE PARCEL EVIDENCE ${JSON.stringify(county).slice(0,24000)}; DETERMINISTIC SPATIAL INTERSECTIONS ${JSON.stringify(spatial).slice(0,18000)}`;
-      const suppliedFile=body.supplementalFile&&String(body.supplementalFile.name||"").toLowerCase().endsWith(".pdf")?{name:String(body.supplementalFile.name).slice(0,180),data:String(body.supplementalFile.data||"")}:undefined;const response=await specialist(client,assignment[0],assignment[1],context,suppliedFile);let jobId=null;if(db&&caseId){const saved=await db.from("research_jobs").insert({case_id:caseId,category:kind,research_question:assignment[1],source_system:kind==="parcel"?"Mohave GIS / FEMA / web":"OpenAI web research",status:"running",materiality:"critical",attempt_count:1,openai_response_id:response.id,started_at:new Date().toISOString()}).select("id").single();jobId=saved.data?.id||null;await db.from("cases").update({status:"investigating"}).eq("id",caseId)}return Response.json({ok:true,kind,responseId:response.id,jobId,status:response.status,directEvidence:{county,spatial}});
+      const county=kind==="parcel"||kind==="water"?await resolveMohaveParcel(apn):null;const spatial=kind==="parcel"&&county?await resolveSpatialOverlays(county):null;const wells=kind==="water"&&county?await resolveAdwrWells(county):null;
+      const context=`APN ${apn}; tracks ${propertyTypes.join(", ")}; objective ${objective}; fire input ${fireService}; user information ${knownInformation||"None"}; targeted follow-up information ${supplementalInformation||"None"}; OFFICIAL MOHAVE PARCEL EVIDENCE ${JSON.stringify(county).slice(0,24000)}; DETERMINISTIC SPATIAL INTERSECTIONS ${JSON.stringify(spatial).slice(0,18000)}; OFFICIAL ADWR WELL REGISTRY RESULTS ${JSON.stringify(wells).slice(0,22000)}`;
+      const suppliedFile=body.supplementalFile&&String(body.supplementalFile.name||"").toLowerCase().endsWith(".pdf")?{name:String(body.supplementalFile.name).slice(0,180),data:String(body.supplementalFile.data||"")}:undefined;const response=await specialist(client,assignment[0],assignment[1],context,suppliedFile);let jobId=null;if(db&&caseId){const saved=await db.from("research_jobs").insert({case_id:caseId,category:kind,research_question:assignment[1],source_system:kind==="parcel"?"Mohave GIS / FEMA / web":kind==="water"?"ADWR Well Registry / web":"OpenAI web research",status:"running",materiality:"critical",attempt_count:1,openai_response_id:response.id,started_at:new Date().toISOString()}).select("id").single();jobId=saved.data?.id||null;await db.from("cases").update({status:"investigating"}).eq("id",caseId)}return Response.json({ok:true,kind,responseId:response.id,jobId,status:response.status,directEvidence:{county,spatial,wells}});
     }
     if(action==="targeted_synthesize"){
       const priorReport=body.priorReport as PropertyReport|undefined;const followUp=body.followUp as {kind?:string;request?:string;response?:string;notes?:string}|undefined;
