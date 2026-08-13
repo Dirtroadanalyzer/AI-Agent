@@ -9,7 +9,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string}
   const db=getSupabaseAdmin();if(!db)return Response.json({ok:false,error:"Supabase is not configured."},{status:503});
   const requestRow=await db.from("action_requests").select("id,case_id,title,priority").eq("id",id).single();
   if(requestRow.error)return Response.json({ok:false,error:requestRow.error.message},{status:404});
-  const evidence=await db.from("evidence").insert({case_id:requestRow.data.case_id,category:"user_input",evidence_type:"user_supplied",source_name:"Team response",source_identifier:requestRow.data.title,fact:responseText,verification_status:"unverified",confidence:"unknown",is_material:true}).select("id").single();
+  const evidence=await db.from("evidence").insert({case_id:requestRow.data.case_id,category:"user_input",evidence_type:"user_supplied",source_name:"Team response",source_identifier:requestRow.data.title,fact:responseText,verification_status:"unverified",is_material:true}).select("id").single();
   if(evidence.error)return Response.json({ok:false,error:`Could not preserve response: ${evidence.error.message}`},{status:500});
   const completedAt=new Date().toISOString();const updated=await db.from("action_requests").update({response_text:responseText,response_evidence_id:evidence.data.id,status:"answered",completed_at:completedAt}).eq("id",id).select("*").single();
   if(updated.error)return Response.json({ok:false,error:`Could not update request: ${updated.error.message}`},{status:500});
