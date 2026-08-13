@@ -1,21 +1,17 @@
 import OpenAI from "openai";
 import type { PropertyReport } from "../../lib/report";
 import { getSupabaseAdmin } from "../../lib/supabase-admin";
+import { resolveMohaveParcel } from "../../lib/parcel-resolver";
 
 export const maxDuration = 300;
 const sectionIds = ["parcel", "title", "zoning", "access", "flood", "water", "septic", "utilities", "fire", "environment", "market", "negotiation"];
 function normalizeApn(value: unknown) { const digits = String(value || "").replace(/\D/g, ""); return digits.length === 8 ? `${digits.slice(0,3)}-${digits.slice(3,5)}-${digits.slice(5)}` : null; }
 
 async function fetchJson(url:string){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),18000);try{const response=await fetch(url,{signal:controller.signal,headers:{Accept:"application/json"},cache:"no-store"});if(!response.ok)throw new Error(`HTTP ${response.status}`);return await response.json()}finally{clearTimeout(timer)}}
-async function countyParcelEvidence(apn:string){
-  const base="https://mcgis.mohave.gov/arcgis/rest/services/PARCELS/MapServer";
-  const params=new URLSearchParams({searchText:apn,contains:"false",layers:"0,2,3,5,6,14",returnGeometry:"true",f:"json"});
-  try{const data=await fetchJson(`${base}/find?${params}`);return {status:"queried",service:base,results:data.results||[],error:data.error||null}}catch(error){return {status:"unavailable",service:base,results:[],error:error instanceof Error?error.message:"County service failed"}}
-}
-async function femaEvidence(countyResults:any[]){
-  const geometry=countyResults.find(x=>x?.geometry)?.geometry;if(!geometry)return {status:"blocked",reason:"No county parcel geometry was returned; exact FEMA intersection requires the parcel polygon."};
+async function femaEvidence(parcel:any){
+  const geometry=parcel?.geometry;if(!geometry)return {status:"blocked",reason:"Parcel resolver exhausted its query ladder without returning a validated polygon."};
   const service="https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query";
-  const params=new URLSearchParams({geometry:JSON.stringify(geometry),geometryType:"esriGeometryPolygon",inSR:"102100",spatialRel:"esriSpatialRelIntersects",outFields:"FLD_ZONE,ZONE_SUBTY,SFHA_TF,STATIC_BFE,DFIRM_ID",returnGeometry:"false",f:"json"});
+  const params=new URLSearchParams({geometry:JSON.stringify(geometry),geometryType:"esriGeometryPolygon",inSR:"4326",spatialRel:"esriSpatialRelIntersects",outFields:"FLD_ZONE,ZONE_SUBTY,SFHA_TF,STATIC_BFE,DFIRM_ID",returnGeometry:"false",f:"json"});
   try{const data=await fetchJson(`${service}?${params}`);return {status:"queried",service,features:data.features||[],error:data.error||null}}catch(error){return {status:"unavailable",service,features:[],error:error instanceof Error?error.message:"FEMA service failed"}}
 }
 
@@ -51,7 +47,7 @@ export async function POST(request: Request) {
     };
     if(action==="investigate"){
       const kind=String(body.kind);const assignment=assignments[kind];if(!assignment)return Response.json({ok:false,error:"Unknown investigator."},{status:400});
-      const county=kind==="parcel"?await countyParcelEvidence(apn):null;const fema=county?await femaEvidence(county.results||[]):null;
+      const county=kind==="parcel"?await resolveMohaveParcel(apn):null;const fema=county?await femaEvidence(county):null;
       const context=`APN ${apn}; tracks ${propertyTypes.join(", ")}; objective ${objective}; fire input ${fireService}; user information ${knownInformation||"None"}; targeted follow-up information ${supplementalInformation||"None"}; Mohave GIS ${JSON.stringify(county).slice(0,18000)}; FEMA ${JSON.stringify(fema).slice(0,10000)}`;
       const suppliedFile=body.supplementalFile&&String(body.supplementalFile.name||"").toLowerCase().endsWith(".pdf")?{name:String(body.supplementalFile.name).slice(0,180),data:String(body.supplementalFile.data||"")}:undefined;const response=await specialist(client,assignment[0],assignment[1],context,suppliedFile);let jobId=null;if(db&&caseId){const saved=await db.from("research_jobs").insert({case_id:caseId,category:kind,research_question:assignment[1],source_system:kind==="parcel"?"Mohave GIS / FEMA / web":"OpenAI web research",status:"running",materiality:"critical",attempt_count:1,openai_response_id:response.id,started_at:new Date().toISOString()}).select("id").single();jobId=saved.data?.id||null;await db.from("cases").update({status:"investigating"}).eq("id",caseId)}return Response.json({ok:true,kind,responseId:response.id,jobId,status:response.status,directEvidence:{county,fema}});
     }
