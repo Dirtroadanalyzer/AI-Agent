@@ -1,0 +1,4 @@
+export type Source = { title: string; url: string; authority: "Official" | "Professional" | "Market" | "Other"; accessed: string };
+export type ReportSection = { id: string; title: string; status: "Verified" | "Partially verified" | "Unverified" | "Not applicable"; summary: string; findings: string[]; risks: string[]; actions: string[]; sources: Source[] };
+export type NeededItem = { priority: "Critical" | "Important" | "Optional"; item: string; why: string; provide: string };
+export type PropertyReport = { apn: string; generatedAt: string; overallConfidence: "High" | "Moderate" | "Low"; decision: string; executiveSummary: string; verifiedFacts: string[]; criticalRisks: string[]; useRanking: { use: string; rank: number; viability: string; conditions: string[] }[]; sections: ReportSection[]; neededItems: NeededItem[]; dueDiligence: { timing: string; task: string; owner: string }[]; limitations: string[] };

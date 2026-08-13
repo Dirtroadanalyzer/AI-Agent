@@ -1,58 +1,30 @@
 import OpenAI from "openai";
+import type { PropertyReport } from "../../lib/report";
 
 export const maxDuration = 300;
+const sectionIds = ["parcel", "title", "zoning", "access", "flood", "water", "septic", "utilities", "fire", "environment", "market", "negotiation"];
+function normalizeApn(value: unknown) { const digits = String(value || "").replace(/\D/g, ""); return digits.length === 8 ? `${digits.slice(0,3)}-${digits.slice(3,5)}-${digits.slice(5)}` : null; }
 
-function normalizeApn(value: unknown) {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (digits.length !== 8) return null;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
-}
+const schema = { type:"object", additionalProperties:false, required:["apn","generatedAt","overallConfidence","decision","executiveSummary","verifiedFacts","criticalRisks","useRanking","sections","neededItems","dueDiligence","limitations"], properties:{
+  apn:{type:"string"},generatedAt:{type:"string"},overallConfidence:{type:"string",enum:["High","Moderate","Low"]},decision:{type:"string"},executiveSummary:{type:"string"},verifiedFacts:{type:"array",items:{type:"string"}},criticalRisks:{type:"array",items:{type:"string"}},
+  useRanking:{type:"array",items:{type:"object",additionalProperties:false,required:["use","rank","viability","conditions"],properties:{use:{type:"string"},rank:{type:"number"},viability:{type:"string"},conditions:{type:"array",items:{type:"string"}}}}},
+  sections:{type:"array",items:{type:"object",additionalProperties:false,required:["id","title","status","summary","findings","risks","actions","sources"],properties:{id:{type:"string",enum:sectionIds},title:{type:"string"},status:{type:"string",enum:["Verified","Partially verified","Unverified","Not applicable"]},summary:{type:"string"},findings:{type:"array",items:{type:"string"}},risks:{type:"array",items:{type:"string"}},actions:{type:"array",items:{type:"string"}},sources:{type:"array",items:{type:"object",additionalProperties:false,required:["title","url","authority","accessed"],properties:{title:{type:"string"},url:{type:"string"},authority:{type:"string",enum:["Official","Professional","Market","Other"]},accessed:{type:"string"}}}}}}},
+  neededItems:{type:"array",items:{type:"object",additionalProperties:false,required:["priority","item","why","provide"],properties:{priority:{type:"string",enum:["Critical","Important","Optional"]},item:{type:"string"},why:{type:"string"},provide:{type:"string"}}}},
+  dueDiligence:{type:"array",items:{type:"object",additionalProperties:false,required:["timing","task","owner"],properties:{timing:{type:"string"},task:{type:"string"},owner:{type:"string"}}}},limitations:{type:"array",items:{type:"string"}}
+}};
 
 export async function POST(request: Request) {
   try {
-    if (!process.env.OPENAI_API_KEY) return Response.json({ ok: false, error: "The OpenAI connection is not configured." }, { status: 503 });
-    const body = await request.json();
-    const apn = normalizeApn(body.apn);
-    const objective = String(body.objective || "General acquisition and highest-and-best-use analysis").trim().slice(0, 1200);
-    if (!apn) return Response.json({ ok: false, error: "Enter a valid eight-digit Mohave County APN." }, { status: 400 });
+    if (!process.env.OPENAI_API_KEY) return Response.json({ok:false,error:"The OpenAI connection is not configured."},{status:503});
+    const body=await request.json(); const apn=normalizeApn(body.apn); const objective=String(body.objective||"General acquisition and highest-and-best-use analysis").trim().slice(0,1600); const knownInformation=String(body.knownInformation||"").trim().slice(0,6000);
+    if(!apn)return Response.json({ok:false,error:"Enter a valid eight-digit Mohave County APN."},{status:400});
+    const response=await new OpenAI({apiKey:process.env.OPENAI_API_KEY}).responses.create({model:process.env.OPENAI_MODEL||"gpt-5-mini",tools:[{type:"web_search"}],text:{format:{type:"json_schema",name:"property_report",strict:true,schema}},input:`Act as a rigorous Mohave County land-development research orchestrator. Target APN: ${apn}. Buyer objective: ${objective}. User-provided facts/documents: ${knownInformation||"None"}.
 
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5-mini",
-      tools: [{ type: "web_search" }],
-      input: `You are the research engine for Dirt Road Property Analyzer, serving licensed real-estate professionals in Mohave County, Arizona.
+SOURCE LADDER (follow in order): (1) establish APN identity and coordinates from Mohave County Assessor/GIS; (2) parcel attributes and mapped districts/layers; (3) Recorder/title leads; (4) official zoning ordinance and General Plan; (5) FEMA/county flood and drainage; (6) ADWR well registry and drillers-log leads; (7) county environmental health/septic; (8) utilities; (9) serving fire district and stored-water/access requirements; (10) environmental/public-land constraints; (11) market evidence. Prefer official sources. Market pages may locate leads but never verify legal facts.
 
-Research Mohave County APN ${apn}. User objective: ${objective || "General acquisition and highest-and-best-use analysis"}.
+COMPLETENESS GATE: Never silently omit an unavailable fact. Every unresolved fact affecting ownership, access, buildability, water, wastewater, flood, fire, utilities, use approval, subdivision, cost, value, or negotiation must appear in neededItems with exactly what the professional user should upload, type, or provide. Do not call something Verified unless the source directly matches this APN. Separate evidence, inference, risk and recommendation. Sources must be real URLs actually consulted. Keep each section concise but decision-useful.
 
-Search current public sources deeply, prioritizing official Mohave County, State of Arizona, FEMA and utility/fire authority sources. Never invent a parcel fact. Distinguish VERIFIED, INFERRED, NOT FOUND and REQUIRES PROFESSIONAL VERIFICATION. If an official portal cannot be accessed, state the exact limitation and identify the manual verification path. An APN match must be confirmed before attributing facts to the parcel.
-
-Return a clear plain-text report using these headings:
-1. EXECUTIVE DECISION SUMMARY
-2. PARCEL IDENTITY AND LOCATION
-3. OWNERSHIP/RECORDER/TITLE FLAGS
-4. ZONING, GENERAL PLAN AND ALLOWED-USE QUESTIONS
-5. LEGAL AND PHYSICAL ACCESS
-6. FLOOD, DRAINAGE AND TOPOGRAPHY
-7. WATER AND WELL RESEARCH
-8. SEPTIC/SOILS/WASTEWATER
-9. ELECTRIC, COMMUNICATIONS AND OTHER UTILITIES
-10. FIRE/EMERGENCY SERVICE AND WATER-STORAGE CONSIDERATIONS
-11. ENVIRONMENTAL/PERMIT CONSTRAINTS
-12. MARKET POSITION AND HIGHEST-AND-BEST-USE OPTIONS
-13. TINY-HOME OR COTTAGE-COMMUNITY SCREEN
-14. PRELIMINARY COST/RISK TIERS
-15. NEGOTIATION LEVERAGE AND OFFER CONDITIONS
-16. BUYER DUE-DILIGENCE ACTION PLAN
-17. SOURCE REGISTER
-18. LIMITATIONS AND PROFESSIONAL-REVIEW NOTICE
-
-For every important statement, identify the source URL and access date when available. Rank use scenarios and explain what would make each viable or eliminate it. Do not claim title status, buildability, legal access, septic suitability, water availability or zoning approval without authoritative evidence. Keep the report useful and specific, not generic.`,
-    });
-    const report = response.output_text?.trim();
-    if (!report) throw new Error("The research service returned no report.");
-    return Response.json({ ok: true, apn, report, generatedAt: new Date().toISOString() });
-  } catch (error) {
-    console.error("Analysis failed", error);
-    return Response.json({ ok: false, error: "The research request failed. Retry once; if it continues, review the Vercel function log." }, { status: 500 });
-  }
+The sections array must contain exactly these 12 ids in this order: ${sectionIds.join(", ")}. Evaluate tiny-home/cottage-community demand and feasibility explicitly in market. Rank highest-and-best-use scenarios. Provide decision conditions and negotiation leverage. Set generatedAt to the current ISO time.`});
+    const report=JSON.parse(response.output_text) as PropertyReport; if(report.sections.length!==sectionIds.length)throw new Error("Incomplete section set"); return Response.json({ok:true,report});
+  } catch(error){console.error("Analysis failed",error);return Response.json({ok:false,error:"The structured research request failed. Retry once; if it continues, review the Vercel function log."},{status:500});}
 }

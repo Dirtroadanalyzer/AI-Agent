@@ -1,50 +1,26 @@
 "use client";
-
 import { FormEvent, useMemo, useState } from "react";
+import type { PropertyReport, ReportSection } from "./lib/report";
 
-const researchAreas = ["Parcel identity", "Zoning & General Plan", "Access & right-of-way", "Flood & drainage", "Water & wells", "Septic & sewer", "Utilities & fire", "Permits & environmental", "Market & highest use", "Financial & negotiation", "Client report"];
-type AnalysisResult = { ok: boolean; apn?: string; report?: string; generatedAt?: string; error?: string };
+type ApiResult={ok:boolean;report?:PropertyReport;error?:string};
+const protocol=["Parcel","Title","Zoning","Access","Flood","Water","Septic","Utilities","Fire","Environment","Market & Use","Negotiation"];
 
-export default function Home() {
-  const [apn, setApn] = useState("");
-  const [objective, setObjective] = useState("");
-  const [status, setStatus] = useState("Ready for a new Mohave County parcel.");
-  const [report, setReport] = useState("");
-  const [generatedAt, setGeneratedAt] = useState("");
-  const [running, setRunning] = useState(false);
-  const validApn = useMemo(() => apn.trim().replace(/[^0-9]/g, "").length === 8, [apn]);
+function List({title,items,tone=""}:{title:string;items:string[];tone?:string}){if(!items.length)return null;return <div className={`listBlock ${tone}`}><h4>{title}</h4><ul>{items.map((x,i)=><li key={i}>{x}</li>)}</ul></div>}
+function SectionView({section}:{section:ReportSection}){return <article className="sectionView"><div className="sectionTitle"><div><p className="eyebrow">REPORT FIELD</p><h2>{section.title}</h2></div><span className={`badge ${section.status.replaceAll(" ","").toLowerCase()}`}>{section.status}</span></div><p className="lead">{section.summary}</p><div className="twoCol"><List title="Findings" items={section.findings}/><List title="Risk flags" items={section.risks} tone="risk"/><List title="Recommended actions" items={section.actions} tone="action"/><div className="listBlock"><h4>Evidence register</h4>{section.sources.length?section.sources.map((s,i)=><p className="source" key={i}><b>{s.authority}</b> · <a href={s.url} target="_blank" rel="noreferrer">{s.title}</a><small>Accessed {s.accessed}</small></p>):<p>No directly matched source recorded.</p>}</div></div></article>}
 
-  async function start(event: FormEvent) {
-    event.preventDefault();
-    if (!validApn) { setStatus("Enter an eight-digit Mohave County APN, such as 306-02-195."); return; }
-    setRunning(true); setReport("");
-    setStatus("Researching public sources and preparing the preliminary report. This can take up to a minute…");
-    try {
-      const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apn, objective }) });
-      const raw = await response.text();
-      let data: AnalysisResult;
-      try { data = JSON.parse(raw) as AnalysisResult; }
-      catch { throw new Error(response.ok ? "The server returned an unreadable response." : `The analysis service stopped before completing (${response.status}). Please retry once.`); }
-      if (!response.ok || !data.ok || !data.report) throw new Error(data.error || "The analysis could not be completed.");
-      setReport(data.report); setGeneratedAt(data.generatedAt || new Date().toISOString());
-      setStatus(`Preliminary report completed for APN ${data.apn}. Review source limitations before client delivery.`);
-    } catch (error) { setStatus(error instanceof Error ? error.message : "The analysis could not be completed."); }
-    finally { setRunning(false); }
-  }
-
-  function downloadReport() {
-    const contents = `DIRT ROAD PROPERTY ANALYZER\nMohave County, Arizona\nGenerated: ${generatedAt}\n\n${report}`;
-    const url = URL.createObjectURL(new Blob([contents], { type: "text/plain;charset=utf-8" }));
-    const link = document.createElement("a"); link.href = url; link.download = `Dirt-Road-APN-${apn.trim().replace(/[^0-9]/g, "-")}.txt`; link.click(); URL.revokeObjectURL(url);
-  }
-
-  return <main>
-    <header><p>DIRT ROAD</p><h1>Property Analyzer & Transaction Coordinator</h1><span>Mohave County, Arizona</span></header>
-    <section className="hero"><div><p className="kicker">ACQUISITION INTELLIGENCE</p><h2>Start a full-depth property analysis</h2><p>The analyzer researches available public web sources, separates verified facts from conclusions, flags missing due-diligence items and produces a preliminary acquisition report.</p><div className="truth"><strong>Current capability</strong><span>Live AI research and preliminary analysis. Direct county GIS/API connectors, document storage and transaction automation remain under development.</span></div></div>
-      <form onSubmit={start}><label>Mohave County APN<input value={apn} onChange={e=>setApn(e.target.value)} placeholder="306-02-195" required disabled={running} /></label><label>Buyer objective or intended use<textarea value={objective} onChange={e=>setObjective(e.target.value)} placeholder="Tiny-home community, off-grid residence, land split, investment…" disabled={running} /></label><button disabled={running}>{running ? "Research in progress…" : "Run preliminary analysis"}</button><small role="status">{status}</small></form>
-    </section>
-    {report && <section className="report"><div className="reportHead"><div><p className="kicker">PRELIMINARY CLIENT REPORT</p><h2>APN {apn}</h2><small>Generated {new Date(generatedAt).toLocaleString()}</small></div><button type="button" onClick={downloadReport}>Download report</button></div><pre>{report}</pre><div className="disclaimer"><strong>Required professional review</strong><p>This preliminary report is decision support, not a title report, survey, legal opinion, engineering conclusion, appraisal, zoning clearance, septic approval or guarantee of source accuracy. Verify material findings with the governing agency and qualified professionals during the contractual due-diligence period.</p></div></section>}
-    <section className="workflow"><div><p className="kicker">FULL-DEPTH PROTOCOL</p><h2>Analysis does not stop after parcel identification</h2></div><div className="grid">{researchAreas.map((area,index)=><article key={area}><b>{String(index+1).padStart(2,"0")}</b><span>{area}</span><em>{index < 9 ? "Preliminary AI research" : "Decision support"}</em></article>)}</div></section>
-    <section className="notice"><strong>Professional-controlled workflow</strong><p>External messages, negotiation positions, objections, waivers and client delivery require human approval. Public-source research and internal analysis may run automatically.</p></section>
-  </main>;
-}
+export default function Home(){
+ const[apn,setApn]=useState("");const[objective,setObjective]=useState("");const[knownInformation,setKnownInformation]=useState("");const[status,setStatus]=useState("Ready for a Mohave County parcel.");const[report,setReport]=useState<PropertyReport|null>(null);const[running,setRunning]=useState(false);const[tab,setTab]=useState("overview");const[answers,setAnswers]=useState<Record<number,string>>({});
+ const validApn=useMemo(()=>apn.replace(/\D/g,"").length===8,[apn]);
+ async function run(event?:FormEvent){event?.preventDefault();if(!validApn){setStatus("Enter an eight-digit Mohave County APN, such as 353-15-018.");return}setRunning(true);setReport(null);setStatus("Following the source ladder and building verified report fields…");try{const response=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({apn,objective,knownInformation})});const raw=await response.text();let data:ApiResult;try{data=JSON.parse(raw)}catch{throw new Error(`The analysis service stopped before completing (${response.status}).`)}if(!response.ok||!data.ok||!data.report)throw new Error(data.error||"No report returned.");setReport(data.report);setTab("overview");setStatus(`Analysis completed with ${data.report.overallConfidence.toLowerCase()} overall confidence. Resolve requested information to improve it.`)}catch(error){setStatus(error instanceof Error?error.message:"Analysis failed.")}finally{setRunning(false)}}
+ async function loadTextFile(file?:File){if(!file)return;if(file.size>500_000){setStatus("That text file is too large; keep supporting text under 500 KB.");return}const text=await file.text();setKnownInformation(v=>`${v}\n\nUPLOADED ${file.name}:\n${text}`.trim());setStatus(`${file.name} added to supporting information.`)}
+ function applyAnswers(){if(!report)return;const added=report.neededItems.map((item,i)=>answers[i]?.trim()?`${item.item}: ${answers[i].trim()}`:"").filter(Boolean).join("\n");if(!added){setStatus("Enter at least one requested answer first.");return}setKnownInformation(v=>`${v}\n${added}`.trim());setStatus("Answers added. Run the analysis again to incorporate and verify them.")}
+ const tabs=report?[{id:"overview",label:"Decision Summary"},{id:"needed",label:`Needed Information (${report.neededItems.length})`},...report.sections.map(s=>({id:s.id,label:s.title})),{id:"final",label:"Polished Report"}]:[];
+ return <main><header><p>DIRT ROAD</p><h1>Property Analyzer & Transaction Coordinator</h1><span>Mohave County, Arizona</span></header>
+ <section className="hero"><div><p className="eyebrow">ACQUISITION INTELLIGENCE</p><h2>Evidence first. Conclusions second.</h2><p>The analyzer follows a defined source ladder, identifies unresolved facts and separates each due-diligence discipline into its own report field.</p><div className="protocol">{protocol.map((x,i)=><span key={x}><b>{i+1}</b>{x}</span>)}</div></div><form onSubmit={run}><label>Mohave County APN<input value={apn} onChange={e=>setApn(e.target.value)} placeholder="353-15-018" disabled={running}/></label><label>Buyer objective<textarea value={objective} onChange={e=>setObjective(e.target.value)} placeholder="Tiny-home community, resale, ranch, subdivision…" disabled={running}/></label><label>Known facts or pasted document text<textarea value={knownInformation} onChange={e=>setKnownInformation(e.target.value)} placeholder="Seller claims, well number, zoning response, title notes…" disabled={running}/></label><label className="fileLabel">Add supporting text file<input type="file" accept=".txt,.md,.csv,.json" onChange={e=>loadTextFile(e.target.files?.[0])} disabled={running}/><small>Text-based files are incorporated now. PDF/image document extraction is the next connector.</small></label><button disabled={running}>{running?"Researching every field…":"Run full assessment"}</button><small role="status">{status}</small></form></section>
+ {report&&<section className="workspace"><nav className="tabs" aria-label="Report sections">{tabs.map(t=><button type="button" key={t.id} className={tab===t.id?"active":""} onClick={()=>setTab(t.id)}>{t.label}</button>)}</nav><div className="tabPanel">
+ {tab==="overview"&&<article><div className="reportHero"><div><p className="eyebrow">ACQUISITION DECISION</p><h2>APN {report.apn}</h2><p>{report.executiveSummary}</p></div><div className="decision"><small>Current conclusion</small><strong>{report.decision}</strong><span>{report.overallConfidence} confidence</span></div></div><div className="twoCol"><List title="Verified parcel facts" items={report.verifiedFacts}/><List title="Critical unresolved risks" items={report.criticalRisks} tone="risk"/><div className="listBlock wide"><h4>Highest-and-best-use ranking</h4>{report.useRanking.sort((a,b)=>a.rank-b.rank).map(x=><div className="useRow" key={x.rank}><b>#{x.rank}</b><div><strong>{x.use}</strong><p>{x.viability}</p><small>{x.conditions.join(" · ")}</small></div></div>)}</div></div></article>}
+ {tab==="needed"&&<article><p className="eyebrow">COMPLETENESS GATE</p><h2>Information needed to strengthen this report</h2><p className="lead">Provide only what is available. Each answer is added to the next research pass; supplied information remains labeled until independently verified.</p><div className="neededGrid">{report.neededItems.map((x,i)=><div className="needed" key={i}><span className={`priority ${x.priority.toLowerCase()}`}>{x.priority}</span><h3>{x.item}</h3><p>{x.why}</p><small>Provide: {x.provide}</small><textarea placeholder="Type the answer, document reference, or professional response…" value={answers[i]||""} onChange={e=>setAnswers({...answers,[i]:e.target.value})}/></div>)}</div><button type="button" onClick={applyAnswers}>Add answers for next analysis</button></article>}
+ {report.sections.map(s=>tab===s.id?<SectionView key={s.id} section={s}/>:null)}
+ {tab==="final"&&<article className="printReport"><div className="printCover"><p>DIRT ROAD PROPERTY ANALYZER</p><h1>Property Acquisition Assessment</h1><h2>Mohave County APN {report.apn}</h2><span>Prepared {new Date(report.generatedAt).toLocaleDateString()}</span></div><section><h2>Executive decision</h2><p>{report.executiveSummary}</p><div className="callout"><b>{report.decision}</b><span>{report.overallConfidence} overall confidence</span></div></section>{report.sections.map(s=><section key={s.id}><h2>{s.title}</h2><p>{s.summary}</p><List title="Findings" items={s.findings}/><List title="Risks" items={s.risks}/><List title="Recommended actions" items={s.actions}/></section>)}<section><h2>Due-diligence action plan</h2>{report.dueDiligence.map((d,i)=><p key={i}><b>{d.timing}</b> — {d.task} <i>({d.owner})</i></p>)}</section><section><h2>Limitations</h2><List title="Professional review notice" items={report.limitations}/></section><button className="printButton" type="button" onClick={()=>window.print()}>Print or save polished PDF</button></article>}
+ </div></section>}
+ <section className="notice"><strong>Professional-controlled workflow</strong><p>Research is decision support, not a title opinion, survey, legal advice, engineering certification, appraisal, zoning clearance, septic approval or guarantee. External communications and client delivery require human approval.</p></section></main>}
