@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { PropertyReport } from "../../lib/report";
+import { getSupabaseAdmin } from "../../lib/supabase-admin";
 
 export const maxDuration = 300;
 const sectionIds = ["parcel", "title", "zoning", "access", "flood", "water", "septic", "utilities", "fire", "environment", "market", "negotiation"];
@@ -31,16 +32,16 @@ const schema = { type:"object", additionalProperties:false, required:["apn","gen
 export async function POST(request: Request) {
   try {
     if (!process.env.OPENAI_API_KEY) return Response.json({ok:false,error:"The OpenAI connection is not configured."},{status:503});
-    const body=await request.json(); const apn=normalizeApn(body.apn); const objective=String(body.objective||"General acquisition and highest-and-best-use analysis").trim().slice(0,1600); const knownInformation=String(body.knownInformation||"").trim().slice(0,6000); const propertyTypes=Array.isArray(body.propertyTypes)?body.propertyTypes.map(String).slice(0,4):[]; const fireService=String(body.fireService||"Unknown — research needed").slice(0,200);
+    const body=await request.json(); const apn=normalizeApn(body.apn); const objective=String(body.objective||"General acquisition and highest-and-best-use analysis").trim().slice(0,1600); const knownInformation=String(body.knownInformation||"").trim().slice(0,6000); const propertyTypes=Array.isArray(body.propertyTypes)?body.propertyTypes.map(String).slice(0,4):[]; const fireService=String(body.fireService||"Unknown — research needed").slice(0,200);const caseId=String(body.caseId||"");const db=getSupabaseAdmin();
     if(!apn)return Response.json({ok:false,error:"Enter a valid eight-digit Mohave County APN."},{status:400});
     const client=new OpenAI({apiKey:process.env.OPENAI_API_KEY});
     const action=String(body.action||"investigate");
     if(action==="poll"){
       const responseId=String(body.responseId||"");if(!responseId.startsWith("resp_"))return Response.json({ok:false,error:"Invalid research job identifier."},{status:400});
       const response=await client.responses.retrieve(responseId);if(response.status==="queued"||response.status==="in_progress")return Response.json({ok:true,status:response.status});
-      if(response.status!=="completed"){const code=response.error?.code||response.incomplete_details?.reason||"unknown_error";const rawDetail=response.error?.message||"OpenAI did not return additional details.";const detail=rawDetail.replace(/organization\s+org-[A-Za-z0-9_-]+/gi,"your OpenAI organization");return Response.json({ok:false,code,error:`Research job failed [${code}]: ${detail}`},{status:code==="rate_limit_exceeded"?429:500})}
-      if(body.jobType==="synthesis"){const report=JSON.parse(response.output_text) as PropertyReport;if(report.sections.length!==sectionIds.length)throw new Error("Incomplete section set");return Response.json({ok:true,status:"completed",report})}
-      return Response.json({ok:true,status:"completed",notes:response.output_text});
+      if(response.status!=="completed"){const code=response.error?.code||response.incomplete_details?.reason||"unknown_error";const rawDetail=response.error?.message||"OpenAI did not return additional details.";const detail=rawDetail.replace(/organization\s+org-[A-Za-z0-9_-]+/gi,"your OpenAI organization");if(db&&body.jobId)await db.from("research_jobs").update({status:"failed",error_message:detail,completed_at:new Date().toISOString()}).eq("id",body.jobId);return Response.json({ok:false,code,error:`Research job failed [${code}]: ${detail}`},{status:code==="rate_limit_exceeded"?429:500})}
+      if(body.jobType==="synthesis"){const report=JSON.parse(response.output_text) as PropertyReport;if(report.sections.length!==sectionIds.length)throw new Error("Incomplete section set");if(db&&caseId){const prior=await db.from("report_versions").select("version_number").eq("case_id",caseId).order("version_number",{ascending:false}).limit(1);const version=(prior.data?.[0]?.version_number||0)+1;await db.from("report_versions").insert({case_id:caseId,version_number:version,report_type:"internal",included_sections:report.sections.map(s=>s.id),report_data:report,approval_status:"draft"});if(report.neededItems.length)await db.from("action_requests").insert(report.neededItems.map(item=>({case_id:caseId,priority:item.priority.toLowerCase(),title:item.item,question:item.why,reason:item.why,requested_return:item.provide,status:"open"})));await db.from("cases").update({status:report.neededItems.some(x=>x.priority==="Critical")?"waiting_for_input":"professional_review",confidence:report.overallConfidence.toLowerCase(),readiness:Math.max(25,100-report.neededItems.filter(x=>x.priority==="Critical").length*12-report.neededItems.filter(x=>x.priority==="Important").length*5)}).eq("id",caseId)}return Response.json({ok:true,status:"completed",report})}
+      if(db&&body.jobId)await db.from("research_jobs").update({status:"completed",result_summary:response.output_text,confidence:"partially_verified",completed_at:new Date().toISOString()}).eq("id",body.jobId);return Response.json({ok:true,status:"completed",notes:response.output_text});
     }
     const assignments:Record<string,[string,string]>={
       parcel:["Parcel, GIS, access and flood","Resolve parcel identity, coordinates/polygon, parcel attributes, site address, zoning and last-sale layers, recorded bearings/distances, roads/right-of-way, FEMA NFHL intersection, county flood/drainage layers, and map export/image pathways."],
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       const kind=String(body.kind);const assignment=assignments[kind];if(!assignment)return Response.json({ok:false,error:"Unknown investigator."},{status:400});
       const county=kind==="parcel"?await countyParcelEvidence(apn):null;const fema=county?await femaEvidence(county.results||[]):null;
       const context=`APN ${apn}; tracks ${propertyTypes.join(", ")}; objective ${objective}; fire input ${fireService}; user information ${knownInformation||"None"}; Mohave GIS ${JSON.stringify(county).slice(0,18000)}; FEMA ${JSON.stringify(fema).slice(0,10000)}`;
-      const response=await specialist(client,assignment[0],assignment[1],context);return Response.json({ok:true,kind,responseId:response.id,status:response.status,directEvidence:{county,fema}});
+      const response=await specialist(client,assignment[0],assignment[1],context);let jobId=null;if(db&&caseId){const saved=await db.from("research_jobs").insert({case_id:caseId,category:kind,research_question:assignment[1],source_system:kind==="parcel"?"Mohave GIS / FEMA / web":"OpenAI web research",status:"running",materiality:"critical",attempt_count:1,openai_response_id:response.id,started_at:new Date().toISOString()}).select("id").single();jobId=saved.data?.id||null;await db.from("cases").update({status:"investigating"}).eq("id",caseId)}return Response.json({ok:true,kind,responseId:response.id,jobId,status:response.status,directEvidence:{county,fema}});
     }
     if(action!=="synthesize")return Response.json({ok:false,error:"Unknown analysis action."},{status:400});
     const investigations=Array.isArray(body.investigations)?body.investigations.slice(0,4):[];if(investigations.length!==4)return Response.json({ok:false,error:"One or more research stages did not finish."},{status:400});
