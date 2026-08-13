@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./enhancements.css";
+import "./print-fix.css";
 
 export const metadata: Metadata = {
   title: "Dirt Road Property Analyzer and Transaction Coordinator",

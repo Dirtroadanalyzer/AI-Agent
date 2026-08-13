@@ -1,0 +1,18 @@
+/* The polished report is nested inside its tab article. Keep that parent alive in print. */
+@media print {
+  @page { size: auto; margin: .55in; }
+
+  .tabPanel > article:has(.printReport) {
+    display: block !important;
+  }
+
+  .tabPanel > article:has(.printReport) .finalControls {
+    display: none !important;
+  }
+
+  .printReport {
+    display: block !important;
+    max-width: none;
+    margin: 0;
+  }
+}
