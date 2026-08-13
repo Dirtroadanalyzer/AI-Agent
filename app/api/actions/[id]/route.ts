@@ -7,9 +7,10 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string}
   const body=await request.json();const responseText=String(body.responseText||"").trim().slice(0,12000);
   if(!responseText)return Response.json({ok:false,error:"Enter an answer or document reference."},{status:400});
   const db=getSupabaseAdmin();if(!db)return Response.json({ok:false,error:"Supabase is not configured."},{status:503});
-  const requestRow=await db.from("action_requests").select("id,case_id,title,priority").eq("id",id).single();
+  const requestRow=await db.from("action_requests").select("id,case_id,title,priority,response_text").eq("id",id).single();
   if(requestRow.error)return Response.json({ok:false,error:requestRow.error.message},{status:404});
-  const completedAt=new Date().toISOString();const updated=await db.from("action_requests").update({response_text:responseText,status:"answered",completed_at:completedAt}).eq("id",id).select("*").single();
+  const preserved=body.append&&requestRow.data.response_text?`${requestRow.data.response_text}\n\nSUPPLEMENTAL INFORMATION:\n${responseText}`:responseText;
+  const completedAt=new Date().toISOString();const updated=await db.from("action_requests").update({response_text:preserved,status:"answered",completed_at:completedAt}).eq("id",id).select("*").single();
   if(updated.error)return Response.json({ok:false,error:`Could not update request: ${updated.error.message}`},{status:500});
   const open=await db.from("action_requests").select("priority").eq("case_id",requestRow.data.case_id).eq("status","open");
   const critical=open.data?.filter(x=>x.priority==="critical").length||0;const important=open.data?.filter(x=>x.priority==="important").length||0;
