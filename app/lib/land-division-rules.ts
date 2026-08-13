@@ -1,0 +1,37 @@
+const sources={
+  countyRules:"https://www.mohave.gov/departments/public-works/documents/minor-land-division-regulations-parcel-plats/",
+  countyGuide:"https://www.mohave.gov/departments/public-works/documents/parcel-plat-submittal-guide/",
+  ars11831:"https://www.azleg.gov/ars/11/00831.htm",
+  definitions:"https://www.azleg.gov/ars/32/02101.htm",
+  publicReport:"https://azre.gov/divisions/development-services",
+  publicReportApplication:"https://azre.gov/resources/subdivision-public-report-application",
+  publicReportExemptions:"https://www.azleg.gov/ars/32/02181-02.htm",
+  waterStatute:"https://www.azleg.gov/ars/45/00108.htm",
+  waterProgram:"https://www.azwater.gov/aaws/aaws-overview"
+};
+
+export function resolveLandDivisionRules(parcel:any,zoningRules:any){
+  const acres=Number(parcel?.attributes?.PARCEL_SIZE||0),minimum=Number(zoningRules?.developmentStandards?.parcelCombiningMinimum?.match?.(/[\d.]+/)?.[0]||0),apn=String(parcel?.attributes?.PARCEL||parcel?.attributes?.TAXPIN||"");
+  const currentYield=minimum>0?Math.floor(acres/minimum):null;
+  const conformingSplit=currentYield!==null&&currentYield>=2;
+  return {
+    status:"deterministic_rule_screen",
+    apn,parcelAcres:acres,currentZoning:zoningRules?.combiningZone||zoningRules?.zone||null,currentMinimumLotAcres:minimum||null,currentZoningWholeLotYield:currentYield,
+    subjectConclusion:conformingSplit
+      ?`The acreage could theoretically contain ${currentYield} whole zoning-minimum lots, but survey, access, utility, water, wastewater and land-division review still control actual yield.`
+      :`${acres.toFixed(2)} acres cannot produce two ${minimum||"current zoning-minimum"}-acre conforming lots. A separately saleable-lot strategy therefore requires a zoning/entitlement change before land-division yield is credible.`,
+    oneParcelCompound:{status:"potential_without_land_division",conclusion:"Multiple lawful residences held on one fee parcel do not by themselves create separately conveyable lots. The accessory-residence, wastewater, fire, access and building rules still apply.",limits:["No unit becomes a separately saleable parcel merely because it has a separate address, meter or lease.","Do not advertise separate land interests, fractional interests or future lots without an ADRE/land-use review.","Condominium, cooperative, timeshare, fractional-interest or common-promotional-plan structures require attorney and ADRE review."]},
+    scenarioMatrix:[
+      {scenario:"One parcel; principal residence plus permitted accessory residences",classification:"No land split",likelyPath:"County site-plan, building, wastewater and fire approvals; retain one legal parcel",publicReport:"Not ordinarily triggered solely by constructing or renting dwellings without conveying land interests",subjectFit:"Strongest cottage-compound structure under current zoning rules"},
+      {scenario:"Two through five separately conveyable lots",classification:"Mohave County minor land division",likelyPath:"Parcel plat; zoning compliance; legal and physical access; utility easements; survey/monumentation; water and sewage method",publicReport:"Generally below the six-lot subdivision threshold, but acting-in-concert/common-plan rules prevent serial splits",subjectFit:conformingSplit?"Potential subject to actual layout":"Not conforming under the current lot minimum; rezone required"},
+      {scenario:"Six or more lots or fractional interests, generally under 36 acres",classification:"Subdivision",likelyPath:"Subdivision plat plus ADRE development filing",publicReport:"ADRE Public Report required before advertising, offers or sales unless a specific exemption/order applies",subjectFit:"Entitlement-intensive; not supported by current A-R/36A yield"},
+      {scenario:"Six or more parcels from 36 to under 160 acres",classification:"Unsubdivided lands under Arizona definitions",likelyPath:"ADRE applicability and disclosure review under the separate unsubdivided-lands regime",publicReport:"Do not treat the 36-acre subdivision exclusion as a blanket ADRE exemption",subjectFit:"A 38.21-acre parent parcel cannot produce this configuration"},
+      {scenario:"Bulk transfer of six or more lots to one buyer",classification:"Possible statutory exemption",likelyPath:"Arizona real-estate counsel/ADRE exemption confirmation before marketing",publicReport:"A statutory exemption exists in defined circumstances; facts must be documented",subjectFit:"Not a development yield path for this undivided parcel"}
+    ],
+    countyMinorDivision:{appliesTo:"Five or fewer lots, parcels or fractional interests, one or more under 36 acres",keyChecks:["Every resulting parcel must satisfy the applicable zoning minimum or carry the statutory/deed deficiency process","Preliminary title evidence must establish legal access","Surveyor/engineer evidence addresses physical two-wheel-drive access","Reserve required utility easements","Affidavit acknowledges the prohibition on acting in concert to evade six-lot subdivision law","Parcel plat identifies water source and sewage-disposal method for every parcel"],rezoneDependency:"Mohave County provides different review routes depending on whether the proposal requires or proposes a density-increasing rezone."},
+    adreTrigger:{rule:"Offering six or more lots, parcels or fractional interests for sale or lease, or causing that division, generally makes the actor a subdivider and requires a Public Report before advertising or offers unless an exemption applies.",lookbackAndCommonPlan:"Related ownership, prior lots, serial conveyances and persons acting in concert can be aggregated. Splitting work among owners does not safely avoid the threshold.",reportTopics:["water and utilities","streets, legal/physical access and drainage","common areas and improvements","restrictions and assurances","material conditions affecting purchasers"]},
+    waterAdequacy:{rule:"For a proposed subdivision outside an Active Management Area, the developer must submit water-supply plans to ADWR before plat recordation unless a statutory designated-provider pathway applies.",standard:"Adequacy evaluates whether sufficient water of suitable quality is continuously, legally and physically available for at least 100 years and whether necessary facilities can be financed.",importantNuance:"Depending on the jurisdiction, an inadequate finding may require disclosure rather than automatically prohibiting development; mandatory adequacy jurisdictions require adequacy before plat approval and Public Report issuance."},
+    decisionGate:{question:"Will the concept keep all residences on one legal parcel, create 2–5 separately conveyable parcels, or offer 6+ lots/fractional interests?",requestOnlyWhenMaterial:"Ask this after a concept proposes separate ownership or lot sales—not during ordinary single-parcel residential analysis.",nextEvidence:["Conceptual site plan and target unit/lot count","Target ownership and rental/sale structure","Surveyor net-acreage and access layout","Planning pre-application response on rezone and density","ADWR water-supply pathway if subdivision is pursued"]},
+    cautions:["This is a deterministic threshold screen, not a legal opinion or subdivision approval.","Gross acreage is not net yield; roads, drainage, easements, terrain and wastewater can reduce yield.","A rezone changes zoning feasibility but does not waive subdivision, ADRE, water, access or infrastructure requirements."],sources
+  };
+}
