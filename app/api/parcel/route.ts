@@ -5,6 +5,7 @@ import { resolveUsdaSoils } from "../../lib/usda-soils";
 import { resolveRecorderLeads } from "../../lib/recorder-leads";
 import { resolveMarketComps } from "../../lib/market-comps";
 import { resolveBuildingDetails } from "../../lib/building-details";
+export const maxDuration = 300;
 
 export async function GET(request:Request){
   const apn=new URL(request.url).searchParams.get("apn")||"";const compact=apn.replace(/\D/g,"");
