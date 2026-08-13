@@ -21,7 +21,10 @@ export default function Home() {
     setStatus("Researching public sources and preparing the preliminary report. This can take up to a minute…");
     try {
       const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apn, objective }) });
-      const data: AnalysisResult = await response.json();
+      const raw = await response.text();
+      let data: AnalysisResult;
+      try { data = JSON.parse(raw) as AnalysisResult; }
+      catch { throw new Error(response.ok ? "The server returned an unreadable response." : `The analysis service stopped before completing (${response.status}). Please retry once.`); }
       if (!response.ok || !data.ok || !data.report) throw new Error(data.error || "The analysis could not be completed.");
       setReport(data.report); setGeneratedAt(data.generatedAt || new Date().toISOString());
       setStatus(`Preliminary report completed for APN ${data.apn}. Review source limitations before client delivery.`);

@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function normalizeApn(value: unknown) {
   const digits = String(value || "").replace(/\D/g, "");
