@@ -14,7 +14,7 @@ type RecorderLead={
 };
 
 function compact(value:unknown){return String(value||"").replace(/[^A-Za-z0-9]/g,"").toUpperCase()}
-function normalizeSurvey(value:unknown){const match=String(value||"").match(/RS[_\s-]*(\d{1,3})\/(\d{1,3})/i);return match?`${match[1].padStart(2,"0")}-${match[2].padStart(2,"0")}`:null}
+function normalizeSurvey(value:unknown){const match=String(value||"").match(/RS[_\s-]*(\d{1,3})\/(\d{1,3})/i);return match?`${Number(match[1])}-${String(Number(match[2])).padStart(2,"0")}`:null}
 function devalueDecode(serialized:string){
   const values=JSON.parse(serialized);const cache=new Map<number,unknown>();
   const decode=(index:number):any=>{if(cache.has(index))return cache.get(index);const value=values[index];if(value===null||typeof value!=="object")return value;if(Array.isArray(value)){const result:any[]=[];cache.set(index,result);for(const child of value)result.push(typeof child==="number"?decode(child):child);return result}const result:Record<string,unknown>={};cache.set(index,result);for(const [key,child] of Object.entries(value))result[key]=typeof child==="number"?decode(child):child;return result};
