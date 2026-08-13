@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     if(action==="poll"){
       const responseId=String(body.responseId||"");if(!responseId.startsWith("resp_"))return Response.json({ok:false,error:"Invalid research job identifier."},{status:400});
       const response=await client.responses.retrieve(responseId);if(response.status==="queued"||response.status==="in_progress")return Response.json({ok:true,status:response.status});
-      if(response.status!=="completed"){const code=response.error?.code||response.incomplete_details?.reason||"unknown_error";const detail=response.error?.message||"OpenAI did not return additional details.";return Response.json({ok:false,error:`Research job failed [${code}]: ${detail}`},{status:500})}
+      if(response.status!=="completed"){const code=response.error?.code||response.incomplete_details?.reason||"unknown_error";const rawDetail=response.error?.message||"OpenAI did not return additional details.";const detail=rawDetail.replace(/organization\s+org-[A-Za-z0-9_-]+/gi,"your OpenAI organization");return Response.json({ok:false,code,error:`Research job failed [${code}]: ${detail}`},{status:code==="rate_limit_exceeded"?429:500})}
       if(body.jobType==="synthesis"){const report=JSON.parse(response.output_text) as PropertyReport;if(report.sections.length!==sectionIds.length)throw new Error("Incomplete section set");return Response.json({ok:true,status:"completed",report})}
       return Response.json({ok:true,status:"completed",notes:response.output_text});
     }
