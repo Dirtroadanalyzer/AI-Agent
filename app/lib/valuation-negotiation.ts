@@ -1,10 +1,10 @@
 function median(values:number[]){const a=[...values].filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:Math.round((a[m-1]+a[m])/2)}
 function money(value:number|null){return value===null?null:new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(value)}
 
-export function resolveValuationNegotiation(parcel:any,market:any,highestBestUse:any){
+export function resolveValuationNegotiation(parcel:any,market:any,highestBestUse:any,inputText=""){
   const subject=market?.subject||{},improved=market?.groups?.improvedResidential||{},primary=improved?.candidates?.filter((x:any)=>x.comparableTier==="primary"&&x.valuationEligible)||[],secondary=improved?.candidates?.filter((x:any)=>x.comparableTier==="secondary"&&x.valuationEligible)||[],vacant=market?.groups?.vacantLand?.candidates?.filter((x:any)=>x.valuationEligible)||[];
   const subjectClass=subject.classification,chosen=subjectClass==="vacant_land"?vacant:primary,prices=chosen.map((x:any)=>Number(x.SALEP)).filter((x:number)=>x>0),benchmark=median(prices),sufficient=chosen.length>=3;
-  const assessorFcv=Number(parcel?.attributes?.FULL_CASH_VALUE||0),askingPrice=null;
+  const assessorFcv=Number(parcel?.attributes?.FULL_CASH_VALUE||0),askingMatch=inputText.match(/asking\s*price[^\d]{0,20}\$?([\d,]+)/i),askingPrice=askingMatch?Number(askingMatch[1].replaceAll(",","")):null;
   const comparableTable=[...primary,...secondary].slice(0,8).map((x:any)=>({apn:x.PARCEL,address:x.SITE_ADDRESS||"No situs address returned",salePrice:x.SALEP,saleDate:x.SALEDT,distanceMiles:x.distanceMiles,acres:x.PARCEL_SIZE,residenceSquareFeet:x.buildingDetails?.primaryResidence?.squareFeet||x.buildingDetails?.totalUniqueImprovementArea||null,tier:x.comparableTier,pricePerResidenceSquareFoot:x.salePricePerResidenceSqFt,flags:x.reviewFlags||[]}));
   const leverage=[
     {topic:"Comparable support",strength:primary.length>=3?"moderate":"strong",finding:`Only ${primary.length} primary and ${secondary.length} secondary assessor-sale candidates presently qualify.`,negotiationUse:primary.length>=3?"Use the verified range as a pricing anchor, then adjust only for documented differences.":"Resist an unsupported premium and require MLS/deed verification or an appraisal before accepting a firm value conclusion."},

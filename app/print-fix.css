@@ -33,3 +33,4 @@
 .evidenceItem a { color: var(--forest); font-weight: 700; }
 @media(max-width:800px){.evidenceMaps{grid-template-columns:1fr}.topPrintButton{margin:10px 0 0}}
 @media print{.topPrintButton{display:none!important}.evidenceMaps{grid-template-columns:1fr 1fr}.evidenceMaps img{min-height:0}.evidenceAppendix{break-before:page}.evidenceItem{font-size:11px}}
+.dealInputs{padding:4px}.dealGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.dealGrid label{background:#f8f7f2;border:1px solid var(--line);padding:12px}.dealGrid textarea{min-height:68px}.dealButtons{display:flex;gap:12px;margin-top:20px}.dealButtons button+button{background:var(--rust)}@media(max-width:800px){.dealGrid{grid-template-columns:1fr}.dealButtons{flex-direction:column}}
