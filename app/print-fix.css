@@ -21,10 +21,10 @@
 .evidenceAppendix { padding: 20px 10px; border-bottom: 1px solid var(--line); }
 .evidenceAppendix > h2 { font-size: 25px; }
 .evidenceAppendix > p { color: var(--muted); line-height: 1.55; }
-.evidenceMaps { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin: 22px 0; }
+.evidenceMaps { display: grid; grid-template-columns: 1fr; gap: 22px; margin: 22px 0; }
 .evidenceMaps figure { margin: 0; border: 1px solid var(--line); background: #f7f5ef; padding: 8px; break-inside: avoid; }
-.evidenceMaps img { display: block; width: 100%; min-height: 180px; object-fit: contain; background: white; }
-.evidenceMaps figcaption { padding: 8px 3px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.evidenceMaps img { display: block; width: 100%; min-height: 420px; object-fit: contain; background: white; }
+.evidenceMaps figcaption { padding: 10px 3px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }.evidenceMaps figcaption a{color:var(--forest)}
 .evidenceItem { display: grid; grid-template-columns: 36px 1fr; gap: 12px; padding: 15px 0; border-top: 1px solid var(--line); break-inside: avoid; }
 .evidenceItem > span { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: var(--forest); color: white; font-weight: 700; font-size: 11px; }
 .evidenceItem b { color: var(--rust); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }
@@ -32,7 +32,7 @@
 .evidenceItem p { margin: 5px 0; }
 .evidenceItem a { color: var(--forest); font-weight: 700; }
 @media(max-width:800px){.evidenceMaps{grid-template-columns:1fr}.topPrintButton{margin:10px 0 0}}
-@media print{.topPrintButton{display:none!important}.evidenceMaps{grid-template-columns:1fr 1fr}.evidenceMaps img{min-height:0}.evidenceAppendix{break-before:page}.evidenceItem{font-size:11px}}
+@media print{.topPrintButton{display:none!important}.evidenceMaps{grid-template-columns:1fr}.evidenceMaps figure{break-before:page}.evidenceMaps img{min-height:0;max-height:8in}.evidenceAppendix{break-before:page}.evidenceItem{font-size:11px}}
 .dealInputs{padding:4px}.dealGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.dealGrid label{background:#f8f7f2;border:1px solid var(--line);padding:12px}.dealGrid textarea{min-height:68px}.dealButtons{display:flex;gap:12px;margin-top:20px}.dealButtons button+button{background:var(--rust)}@media(max-width:800px){.dealGrid{grid-template-columns:1fr}.dealButtons{flex-direction:column}}
 .approvalList{display:grid;gap:16px}.approvalCard{border:1px solid var(--line);background:#faf9f5;padding:18px}.approvalHead{display:flex;justify-content:space-between;gap:20px}.approvalHead h3{margin:8px 0 14px}.approvalHead>b{text-transform:uppercase;font-size:10px;letter-spacing:.08em;color:var(--forest)}.approvalCard textarea{width:100%;min-height:220px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.5}.approvalButtons{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}.approvalButtons button:nth-child(2){background:#2f6848}.approvalButtons button:nth-child(3){background:var(--danger)}
 .loginShell{max-width:520px;min-height:80vh;display:grid;align-content:center;gap:25px}.loginShell form h2{margin-top:0}.userBadge{margin-left:auto;display:flex;align-items:center;gap:12px;float:right}.userBadge button{padding:8px 11px;background:var(--rust)}@media print{.userBadge{display:none!important}}
