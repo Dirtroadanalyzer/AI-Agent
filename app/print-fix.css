@@ -41,3 +41,6 @@
 .tabs button{white-space:normal;min-height:46px;border-bottom:1px solid var(--line);line-height:1.25}
 .evidenceMaps img{width:100%;height:auto;min-height:0;object-fit:contain;background:#fffefa}
 @media(max-width:700px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.requestDisposition{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.requestDisposition button{background:#eee9df;color:#39483f;padding:8px 10px;font-size:11px}
+.requestDisposition button:last-child{color:#803328}
