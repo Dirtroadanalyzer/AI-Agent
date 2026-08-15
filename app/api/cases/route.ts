@@ -11,6 +11,6 @@ export async function POST(request:Request){
 
 export async function GET(){
   const db=getSupabaseAdmin();if(!db)return Response.json({ok:false,error:"Supabase is not configured."},{status:503});
-  const {data,error}=await db.from("cases").select("id,apn,title,status,confidence,readiness,created_at,updated_at").order("updated_at",{ascending:false}).limit(25);
+  const {data,error}=await db.from("cases").select("id,apn,title,status,confidence,readiness,created_at,updated_at").order("updated_at",{ascending:false}).limit(100);
   if(error)return Response.json({ok:false,error:error.message},{status:500});return Response.json({ok:true,cases:data});
 }

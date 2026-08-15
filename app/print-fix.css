@@ -88,3 +88,20 @@
 .scopeDrawer>form{box-shadow:none;border:0;background:#f8f7f2;margin-top:13px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
 .scopeDrawer>form fieldset,.scopeDrawer>form .fileLabel,.scopeDrawer>form button,.scopeDrawer>form>small{grid-column:1/-1}
 @media(max-width:700px){.activeCaseHeader{grid-template-columns:1fr}.scopeDrawer>form{grid-template-columns:1fr}.scopeDrawer>form>*{grid-column:1!important}}
+.legacyCaseDashboard{display:none}
+.caseManager{background:var(--paper);border:1px solid var(--line);margin-top:24px;padding:24px}
+.caseMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:19px 0}
+.caseMetrics button{background:#f4f1e9;color:var(--ink);border:1px solid var(--line);display:flex;align-items:baseline;gap:8px;text-align:left}
+.caseMetrics button.active{background:var(--forest);color:white;border-color:var(--forest)}
+.caseMetrics b{font:24px "Libre Caslon Text",Georgia,serif}
+.caseMetrics span{font-size:11px}
+.caseTools{display:grid;grid-template-columns:minmax(240px,1fr) 190px 190px;gap:10px;background:#ede9df;padding:12px}
+.caseTools label{gap:5px}
+.caseTools input,.caseTools select{height:42px}
+.caseTable{display:grid;border:1px solid var(--line);border-bottom:0;margin-top:13px}
+.caseRow{display:grid;grid-template-columns:minmax(190px,1.4fr) minmax(130px,.8fr) 90px 100px 100px;gap:12px;align-items:center;text-align:left;background:white;color:var(--ink);border-radius:0;border-bottom:1px solid var(--line);padding:13px 15px}
+.caseRow:hover{background:#f8f6ef}.caseRow.selected{background:#f0f5f1;box-shadow:inset 4px 0 var(--rust)}
+.caseRow span{display:flex;flex-direction:column;gap:3px}.caseRow small{color:var(--muted);font-size:10px}.caseRow time{font-size:11px;color:var(--muted)}
+.casePrimary strong{font:17px "Libre Caslon Text",Georgia,serif}.caseStatus{text-transform:capitalize;color:var(--rust);font-size:11px;font-weight:700}
+.viewCases{margin-top:12px;background:#eee9df;color:var(--forest)}.searchNote{display:block;margin-top:12px;color:var(--muted)}
+@media(max-width:800px){.caseMetrics{grid-template-columns:repeat(2,1fr)}.caseTools{grid-template-columns:1fr}.caseRow{grid-template-columns:1fr 1fr}.caseRow time{display:none}}

@@ -1,0 +1,27 @@
+"use client";
+import { useMemo, useState } from "react";
+
+type SavedCase={id:string;apn:string;title:string;status:string;confidence:string|null;readiness:number|null;updated_at:string};
+const filters=[
+  ["all","All properties"],
+  ["attention","Needs attention"],
+  ["research","Researching"],
+  ["review","Professional review"],
+  ["complete","Completed"]
+] as const;
+
+function bucket(item:SavedCase,filter:string){
+  const status=String(item.status||"screening");
+  if(filter==="attention")return status==="waiting_for_input"||Number(item.readiness||0)<70;
+  if(filter==="research")return ["screening","investigating"].includes(status);
+  if(filter==="review")return status==="professional_review";
+  if(filter==="complete")return ["completed","closed","archived"].includes(status);
+  return true;
+}
+
+export function CaseDashboard({cases,selectedId,busy,onOpen,onNew}:{cases:SavedCase[];selectedId:string;busy:boolean;onOpen:(id:string)=>void;onNew:()=>void}){
+  const[query,setQuery]=useState("");const[filter,setFilter]=useState("all");const[sort,setSort]=useState("activity");const[showAll,setShowAll]=useState(false);
+  const filtered=useMemo(()=>{const q=query.trim().toLowerCase();return cases.filter(x=>bucket(x,filter)&&(!q||[x.apn,x.title,x.status,x.confidence].some(value=>String(value||"").toLowerCase().includes(q)))).sort((a,b)=>sort==="readiness"?Number(b.readiness||0)-Number(a.readiness||0):sort==="risk"?Number(a.readiness||0)-Number(b.readiness||0):new Date(b.updated_at).getTime()-new Date(a.updated_at).getTime())},[cases,query,filter,sort]);
+  const visible=showAll?filtered:filtered.slice(0,5);
+  return <section className="caseManager"><div className="dashboardTitle"><div><p className="eyebrow">PROPERTY CASES</p><h2>Daily property workspace</h2><p>Find active work, attention items and recently updated properties.</p></div><button type="button" onClick={onNew}>+ New property</button></div><div className="caseMetrics"><button type="button" className={filter==="all"?"active":""} onClick={()=>setFilter("all")}><b>{cases.length}</b><span>Properties</span></button><button type="button" className={filter==="attention"?"active":""} onClick={()=>setFilter("attention")}><b>{cases.filter(x=>bucket(x,"attention")).length}</b><span>Need attention</span></button><button type="button" className={filter==="research"?"active":""} onClick={()=>setFilter("research")}><b>{cases.filter(x=>bucket(x,"research")).length}</b><span>Researching</span></button><button type="button" className={filter==="review"?"active":""} onClick={()=>setFilter("review")}><b>{cases.filter(x=>bucket(x,"review")).length}</b><span>Review ready</span></button></div><div className="caseTools"><label>Find property<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="APN or saved case title…"/></label><label>Status<select value={filter} onChange={e=>setFilter(e.target.value)}>{filters.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label><label>Sort<select value={sort} onChange={e=>setSort(e.target.value)}><option value="activity">Recent activity</option><option value="readiness">Highest readiness</option><option value="risk">Lowest readiness first</option></select></label></div><div className="caseTable" role="list">{visible.length?visible.map(x=><button type="button" role="listitem" className={`caseRow ${selectedId===x.id?"selected":""}`} key={x.id} onClick={()=>onOpen(x.id)} disabled={busy}><span className="casePrimary"><strong>{x.apn}</strong><small>{x.title||`APN ${x.apn}`}</small></span><span className={`caseStatus ${x.status}`}>{String(x.status||"screening").replaceAll("_"," ")}</span><span><b>{x.readiness??0}%</b><small>ready</small></span><span><b>{x.confidence||"pending"}</b><small>confidence</small></span><time>{x.updated_at?new Date(x.updated_at).toLocaleDateString():"—"}</time></button>):<p className="emptyState">No property cases match this view.</p>}</div>{filtered.length>5&&<button type="button" className="viewCases" onClick={()=>setShowAll(v=>!v)}>{showAll?"Show five recent properties":`View all ${filtered.length} matching properties`}</button>}<small className="searchNote">Address, MLS number, owner and client search will activate as those fields are added to case intake.</small></section>
+}
