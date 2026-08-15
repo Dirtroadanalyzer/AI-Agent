@@ -74,3 +74,17 @@
 .transactionPanel>article{border:0;box-shadow:none}
 .tabs{grid-template-columns:repeat(5,minmax(120px,1fr))}
 @media(max-width:700px){.researchCard summary{align-items:flex-start;flex-wrap:wrap}.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hiddenIntake{display:none}
+.activeCaseHeader{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,360px);gap:22px;align-items:center;background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--forest);padding:22px 25px;margin:24px 0}
+.caseIdentity h2{font-size:28px;margin:2px 0 7px}
+.caseIdentity>p:not(.eyebrow){margin:0;color:var(--muted)}
+.caseTags{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.caseTags span{font-size:10px;text-transform:uppercase;letter-spacing:.06em;background:#eee9df;color:#39483f;padding:6px 8px}
+.caseDecision{background:var(--forest);color:white;padding:17px;display:flex;flex-direction:column;gap:7px}
+.caseDecision small{color:#dce7df;text-transform:uppercase;letter-spacing:.08em}
+.caseDecision strong{font:17px/1.35 "Libre Caslon Text",Georgia,serif}
+.scopeDrawer{grid-column:1/-1;border-top:1px solid var(--line);padding-top:13px}
+.scopeDrawer>summary{cursor:pointer;font-weight:700;color:var(--forest);padding:5px 0}
+.scopeDrawer>form{box-shadow:none;border:0;background:#f8f7f2;margin-top:13px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.scopeDrawer>form fieldset,.scopeDrawer>form .fileLabel,.scopeDrawer>form button,.scopeDrawer>form>small{grid-column:1/-1}
+@media(max-width:700px){.activeCaseHeader{grid-template-columns:1fr}.scopeDrawer>form{grid-template-columns:1fr}.scopeDrawer>form>*{grid-column:1!important}}
