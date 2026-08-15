@@ -44,3 +44,33 @@
 .requestDisposition{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
 .requestDisposition button{background:#eee9df;color:#39483f;padding:8px 10px;font-size:11px}
 .requestDisposition button:last-child{color:#803328}
+.legacyActionCenter{display:none}
+.workspaceHeading{border-bottom:1px solid var(--line);margin-bottom:24px;padding-bottom:18px}
+.workspaceHeading h2{font-size:30px;margin:4px 0 8px}
+.workspaceHeading>p:last-child{color:var(--muted);line-height:1.6;max-width:850px}
+.researchGroup{margin:28px 0}
+.researchGroup>h3{font:22px/1.25 "Libre Caslon Text",Georgia,serif;margin:0 0 5px}
+.researchGroup>p{color:var(--muted);font-size:13px;margin:0 0 13px}
+.researchCards{display:grid;gap:10px}
+.researchCard{border:1px solid var(--line);background:#faf9f5}
+.researchCard summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:22px;padding:17px;list-style:none}
+.researchCard summary::-webkit-details-marker{display:none}
+.researchCard summary span{display:flex;flex-direction:column;gap:6px}
+.researchCard summary b{font:18px/1.25 "Libre Caslon Text",Georgia,serif}
+.researchCard summary small{line-height:1.45;color:var(--muted)}
+.researchCard summary:after{content:"+";font-size:24px;color:var(--rust)}
+.researchCard[open] summary:after{content:"−"}
+.researchCard[open] summary{border-bottom:1px solid var(--line);background:#f2efe6}
+.researchBody{padding:20px}
+.researchList{border-top:2px solid var(--gold);padding:14px 16px;background:white}
+.researchList.risk{border-color:var(--danger);background:#fbf3ef}
+.researchList.action{border-color:var(--forest);background:#f0f5f1}
+.researchList h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:0 0 9px}
+.researchList li,.researchList p{font-size:13px;line-height:1.6}
+.transactionWorkspace{display:grid;gap:18px}
+.transactionPanel{border:1px solid var(--line);background:#faf9f5}
+.transactionPanel>summary{cursor:pointer;padding:17px;font-weight:700;color:var(--forest)}
+.transactionPanel[open]>summary{border-bottom:1px solid var(--line)}
+.transactionPanel>article{border:0;box-shadow:none}
+.tabs{grid-template-columns:repeat(5,minmax(120px,1fr))}
+@media(max-width:700px){.researchCard summary{align-items:flex-start;flex-wrap:wrap}.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
