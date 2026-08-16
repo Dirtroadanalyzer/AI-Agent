@@ -19,6 +19,7 @@ const section=(id:string,status:ReportSection["status"],summary:string,findings:
 const compactApn=(value:unknown)=>String(value||"").replace(/\D/g,"");
 const money=(value:unknown)=>Number(value)>0?new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Number(value)):"Not returned";
 function overlay(data:any,topic:string){return data?.conclusions?.find((x:any)=>x.topic===topic)}
+async function timed(label:string,promise:Promise<any>,fallback:any,ms=20000):Promise<any>{let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([promise,new Promise<any>(resolve=>{timer=setTimeout(()=>resolve({...fallback,status:"temporarily_unavailable",error:`${label} exceeded ${Math.round(ms/1000)} seconds and was deferred.`}),ms)})])}finally{if(timer)clearTimeout(timer)}}
 
 export async function POST(request:Request){
  try{
@@ -27,11 +28,11 @@ export async function POST(request:Request){
   const parcel=await resolveMohaveParcel(apn);if(parcel?.status!=="resolved")return Response.json({ok:false,error:"Mohave County parcel data did not return an exact APN match."},{status:404});
   const parcelApn=String(parcel.attributes?.PARCEL||parcel.attributes?.TAXPIN||apn);
   const [spatial,buildings,market,wells,soils]=await Promise.all([
-   resolveSpatialOverlays(parcel),resolveBuildingDetails([parcelApn]),modules.includes("market")?resolveMarketComps(parcel):null,modules.includes("water")?resolveAdwrWells(parcel):null,modules.some((x:string)=>["septic","environment"].includes(x))?resolveUsdaSoils(parcel):null
+   timed("Mohave spatial layers",resolveSpatialOverlays(parcel),{status:"temporarily_unavailable",results:[],conclusions:[]}),timed("Assessor improvements",resolveBuildingDetails([parcelApn]),{status:"temporarily_unavailable",parcels:{},diagnostics:[]},12000),modules.includes("market")?timed("Comparable-sale search",resolveMarketComps(parcel),{status:"temporarily_unavailable",groups:{},derived:{primaryComparableCount:0,secondaryComparableCount:0}},18000):null,modules.includes("water")?timed("ADWR well search",resolveAdwrWells(parcel),{status:"temporarily_unavailable",onParcel:[],nearby:[]},15000):null,modules.some((x:string)=>["septic","environment"].includes(x))?timed("USDA soil search",resolveUsdaSoils(parcel),{status:"temporarily_unavailable",mapUnits:[],components:[],septicInterpretations:[]},18000):null
   ]);
   const zoningRules=modules.some((x:string)=>["zoning","access","fire","utilities"].includes(x))?resolveZoningRules(parcel,spatial):null;
   const landDivisionRules=modules.includes("zoning")&&zoningRules?resolveLandDivisionRules(parcel,zoningRules):null;
-  const recorder=modules.includes("title")?await resolveRecorderLeads(parcel,spatial):null;
+  const recorder=modules.includes("title")?await timed("Recorder and survey leads",resolveRecorderLeads(parcel,spatial),{status:"temporarily_unavailable",leads:[],surveys:[],conclusions:[]},15000):null;
   const valuation=modules.includes("market")?resolveValuationNegotiation(parcel,market,null,String(body.knownInformation||"")):null;
   const direct={county:parcel,buildings,spatial,zoningRules,landDivisionRules,highestBestUse:null,valuationNegotiation:valuation,recorder,market,wells,soils};
   const evidencePackage=buildEvidencePackage([{kind:"parcel",directEvidence:direct},{kind:"recorder",directEvidence:direct},{kind:"water",directEvidence:direct},{kind:"zoning",directEvidence:direct}]);
